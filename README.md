@@ -19,4 +19,4 @@
 streamlit run `dashboard_Striukova_Anastasia_Stanislavovna.py`
 
 ## Публичная ссылка на дашборд
-https://dashboard-striukova.streamlit.app
+[https://dashboard-striukova.streamlit.app](https://dashboard-striukova-anastasia-stanislavovna.streamlit.app)
