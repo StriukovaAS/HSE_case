@@ -1,0 +1,6 @@
+recommendation,n_rejected,defaults_avoided,hit_rate_pct,el_saved,income_lost,net_effect
+HIGH: DTI>70% и score<640,610,413,67.7,91850357,17055670,74794687
+car: score<600 или DTI>75%,480,342,71.2,72953607,12607196,60346412
+partner: score<600,345,234,67.8,32903481,5434487,27468994
+age<25 и DTI>65%,183,140,76.5,22127808,2510987,19616822
+South+partner: DTI>70%,22,14,63.6,2753510,621310,2132200

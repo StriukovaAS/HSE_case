@@ -1,0 +1,8 @@
+region,channel,fact_loans,fact_pd,fact_score,fact_dti,plan_default_rate,plan_credit_score,plan_dti,dev_pd,dev_score,dev_dti,pd_status,score_status,dti_status
+Moscow,branch,636,0.182,641.936,56.386,0.09,623.0,47.5,0.092,18.9,8.9,BAD,OK,BAD
+Moscow,online,690,0.203,642.939,58.23,0.1,622.0,52.7,0.103,20.9,5.5,BAD,OK,BAD
+SPb,branch,443,0.178,639.867,53.64,0.1,612.0,50.4,0.078,27.9,3.2,BAD,OK,BAD
+SPb,online,450,0.191,637.78,56.517,0.09,616.0,53.0,0.101,21.8,3.5,BAD,OK,BAD
+Siberia,branch,320,0.188,615.462,54.482,0.12,594.0,51.6,0.068,21.5,2.9,BAD,OK,BAD
+South,partner,211,0.204,618.678,56.623,0.16,577.0,54.7,0.044,41.7,1.9,BAD,OK,BAD
+Ural,branch,419,0.196,624.809,53.984,0.09,601.0,48.8,0.106,23.8,5.2,BAD,OK,BAD
