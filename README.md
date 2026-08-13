@@ -20,3 +20,4 @@ streamlit run `dashboard_Striukova_Anastasia_Stanislavovna.py`
 
 ## Публичная ссылка на дашборд
 https://dashboard-striukova-anastasia-stanislavovna.streamlit.app
+NB: доступ без ВПН может быть нестабилен
