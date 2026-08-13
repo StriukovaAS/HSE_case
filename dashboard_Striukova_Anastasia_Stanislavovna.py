@@ -12,13 +12,13 @@ from plotly.subplots import make_subplots
 
 st.set_page_config(page_title="ЦифраФинанс — мониторинг портфеля", layout="wide")
 
-SURNAME = "Striukova"
+AUTHOR = "Striukova_Anastasia_Stanislavovna"
 LGD = 0.45  # допущение Этапа 3
 
 @st.cache_data
 def load_data():
-    df = pd.read_csv(f"loan_portfolio_clean_{SURNAME}.csv", parse_dates=["issue_date"])
-    pf = pd.read_csv(f"plan_fact_{SURNAME}.csv")
+    df = pd.read_csv(f"loan_portfolio_clean_{AUTHOR}.csv", parse_dates=["issue_date"])
+    pf = pd.read_csv(f"plan_fact_{AUTHOR}.csv")
     return df, pf
 
 df, pf = load_data()
