@@ -1,9 +1,10 @@
 # ==========================================================
 # Дашборд еженедельного мониторинга портфеля
 # Банк «ЦифраФинанс» | Streamlit + Plotly
-# Запуск: streamlit run dashboard_Striukova.py
+# Запуск: streamlit run dashboard_Striukova_Anastasia_Stanislavovna.py
 # ==========================================================
 
+import numpy as np
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -13,7 +14,8 @@ from plotly.subplots import make_subplots
 st.set_page_config(page_title="ЦифраФинанс — мониторинг портфеля", layout="wide")
 
 AUTHOR = "Striukova_Anastasia_Stanislavovna"
-LGD = 0.45  # допущение Этапа 3
+LGD = 0.45          # допущение Этапа 3
+TARGET_DR = 10.0    # цель по default rate
 
 @st.cache_data
 def load_data():
@@ -57,11 +59,11 @@ el = dr / 100 * volume * LGD
 avg_dti = fdf["dti_ratio"].mean()
 
 k1.metric("Объём портфеля", f"{volume / 1e6:,.1f} млн ₽", f"{len(fdf):,} кредитов")
-k2.metric("Default rate", f"{dr:.1f}%", f"{dr - 10:+.1f} п.п. к цели 10%", delta_color="inverse")
+k2.metric("Default rate", f"{dr:.1f}%", f"{dr - TARGET_DR:+.1f} п.п. к цели {TARGET_DR:.0f}%", delta_color="inverse")
 k3.metric("Expected Loss", f"{el / 1e6:,.1f} млн ₽", "LGD = 45%", delta_color="inverse")
 k4.metric("Средний DTI", f"{avg_dti:.1f}%")
 
-# ---------------- Динамика выдач и дефолтов (две оси) ----------------
+# ---------------- Динамика выдач и дефолтов ----------------
 st.subheader("Динамика выдач и дефолтов по кварталам")
 fdf["quarter"] = fdf["issue_date"].dt.to_period("Q").astype(str)
 q = fdf.groupby("quarter").agg(issued=("loan_id", "count"), defaults=("is_default", "sum")).reset_index()
@@ -76,16 +78,79 @@ fig_dyn.update_yaxes(title_text="Default rate, %", secondary_y=True)
 fig_dyn.update_layout(height=420, legend=dict(orientation="h", y=1.08))
 st.plotly_chart(fig_dyn, use_container_width=True)
 
-# ---------------- Тепловая карта + scatter ----------------
+# ---------------- ПУНКТ 2: продуктовый срез ----------------
+st.subheader("DR по продуктам")
+col_p1, col_p2 = st.columns(2)
+
+prod = (
+    fdf.groupby("loan_product")
+    .agg(n=("loan_id", "count"), volume=("loan_amount", "sum"), dr=("is_default", "mean"))
+    .reset_index()
+    .assign(dr_pct=lambda t: (t["dr"] * 100).round(1), vol_mln=lambda t: (t["volume"] / 1e6).round(1))
+    .sort_values("dr_pct", ascending=False)
+)
+
+with col_p1:
+    fig_prod = go.Figure(go.Bar(
+        x=prod["loan_product"], y=prod["dr_pct"],
+        text=prod["n"], textposition="outside",
+        marker_color="#e45756",
+        customdata=prod["vol_mln"],
+        hovertemplate=("Продукт: %{x}<br>DR: %{y:.1f}%<br>N кредитов: %{text}<br>"
+                       "Объём: %{customdata:.1f} млн ₽<extra></extra>"),
+    ))
+    fig_prod.add_hline(y=TARGET_DR, line_dash="dash", line_color="green",
+                       annotation_text=f"цель {TARGET_DR:.0f}%")
+    fig_prod.update_layout(height=420, yaxis_title="Default rate, %")
+    st.plotly_chart(fig_prod, use_container_width=True)
+    st.caption("Число над столбцом — количество кредитов в сегменте.")
+
+with col_p2:
+    pc = (
+        fdf.groupby(["loan_product", "channel"])
+        .agg(n=("loan_id", "count"), dr=("is_default", "mean"))
+        .reset_index()
+        .assign(dr_pct=lambda t: (t["dr"] * 100).round(1))
+    )
+    fig_pc = px.bar(pc, x="loan_product", y="dr_pct", color="channel", barmode="group",
+                    color_discrete_sequence=["#4c78a8", "#f58518", "#54a24b"],
+                    custom_data=["n", "channel"],
+                    labels=dict(loan_product="Продукт", dr_pct="Default rate, %", channel="Канал"),
+                    height=420)
+    fig_pc.update_traces(hovertemplate=("Продукт: %{x}<br>Канал: %{customdata[1]}<br>"
+                                        "DR: %{y:.1f}%<br>N: %{customdata[0]:.0f}<extra></extra>"))
+    fig_pc.add_hline(y=TARGET_DR, line_dash="dash", line_color="green")
+    st.plotly_chart(fig_pc, use_container_width=True)
+    st.caption("N по сегменту — в tooltip при наведении.")
+
+# ---------------- ПУНКТ 1: heatmap с N и объёмом + scatter ----------------
 col_hm, col_sc = st.columns(2)
 
 with col_hm:
     st.subheader("DR: канал × тип занятости")
-    hm = (fdf.pivot_table(values="is_default", index="channel", columns="employment_type", aggfunc="mean") * 100).round(1)
-    fig_hm = px.imshow(hm, text_auto=".1f", color_continuous_scale="YlOrRd", aspect="auto",
-                       labels=dict(x="Тип занятости", y="Канал", color="DR, %"))
-    fig_hm.update_layout(height=420)
+    hm_dr = fdf.pivot_table(values="is_default", index="channel", columns="employment_type", aggfunc="mean") * 100
+    hm_n = fdf.pivot_table(values="loan_id", index="channel", columns="employment_type", aggfunc="count").fillna(0).astype(int)
+    hm_vol = (fdf.pivot_table(values="loan_amount", index="channel", columns="employment_type", aggfunc="sum") / 1e6).fillna(0)
+
+    customdata = np.stack([hm_n.values, hm_vol.values], axis=-1)
+
+    fig_hm = go.Figure(go.Heatmap(
+        x=hm_dr.columns.tolist(), y=hm_dr.index.tolist(), z=hm_dr.round(1).values,
+        customdata=customdata,
+        colorscale="YlOrRd",
+        colorbar=dict(title="DR, %"),
+        hovertemplate=("Канал: %{y}<br>Тип занятости: %{x}<br>DR: %{z:.1f}%<br>"
+                       "N кредитов: %{customdata[0]:.0f}<br>Объём: %{customdata[1]:.1f} млн ₽<extra></extra>"),
+    ))
+    for y_val in hm_dr.index:
+        for x_val in hm_dr.columns:
+            v = hm_dr.loc[y_val, x_val]
+            if pd.notna(v):
+                fig_hm.add_annotation(x=x_val, y=y_val, text=f"{v:.1f}", showarrow=False,
+                                      font=dict(size=11, color="white" if v >= 40 else "black"))
+    fig_hm.update_layout(height=420, xaxis_title="Тип занятости", yaxis_title="Канал")
     st.plotly_chart(fig_hm, use_container_width=True)
+    st.caption("В tooltip каждой ячейки — N и объём: защита от выводов по малым выборкам.")
 
 with col_sc:
     st.subheader("Credit score × DTI")
